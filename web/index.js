@@ -189,6 +189,35 @@ function colorCube(x, y, color) {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.DYNAMIC_DRAW); // Using DYNAMIC_DRAW for frequent updates
 }
 
+function rayIntersectsCube(origin, direction, center, size) {
+    const minBounds = vec3.fromValues(center[0] - size, center[1] - size, center[2] - size);
+    const maxBounds = vec3.fromValues(center[0] + size, center[1] + size, center[2] + size);
+
+    let tMin = (minBounds[0] - origin[0]) / direction[0];
+    let tMax = (maxBounds[0] - origin[0]) / direction[0];
+
+    if (tMin > tMax) [tMin, tMax] = [tMax, tMin];
+
+    let tyMin = (minBounds[1] - origin[1]) / direction[1];
+    let tyMax = (maxBounds[1] - origin[1]) / direction[1];
+
+    if (tyMin > tyMax) [tyMin, tyMax] = [tyMax, tyMin];
+
+    if (tMin > tyMax || tyMin > tMax) return false;
+
+    tMin = Math.max(tMin, tyMin);
+    tMax = Math.min(tMax, tyMax);
+
+    let tzMin = (minBounds[2] - origin[2]) / direction[2];
+    let tzMax = (maxBounds[2] - origin[2]) / direction[2];
+
+    if (tzMin > tzMax) [tzMin, tzMax] = [tzMax, tzMin];
+
+    if (tMin > tzMax || tzMin > tMax) return false;
+
+    return true;
+}
+
 function animatePath() {
     if (animationIndex >= path.length) {
         isPathfinding = false;  // Animation complete
@@ -234,27 +263,81 @@ canvas.addEventListener("mousemove", (event) => {
 });
 
 canvas.addEventListener("click", (event) => {
-    if (isPathfinding) return;  // Disable obstacle marking during pathfinding
+    if (isPathfinding) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const x = (event.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (event.clientY - rect.top) * (canvas.height / rect.height);
 
-    const gridX = Math.floor(x / (canvas.width / gridWidth));
-    const gridY = Math.floor(y / (canvas.height / gridHeight));
 
-    // Toggle obstacle
-    if (obstacles.has(`${x},${y}`)) {
-        obstacles.delete(`${x},${y}`);
-        pathfinding.clear_obstacle(x, y);  // Clear obstacle in Rust
-        colorCube(x, y, [0.0, 0.0, 1.0]);
-    } else {
-        obstacles.add(`${x},${y}`);
-        pathfinding.set_obstacle(x, y);    // Set obstacle in Rust
-        colorCube(x, y, [1.0, 0.0, 0.0]);
+    // Convert to normalized device coordinates (NDC)
+    const ndcX = (2 * x) / canvas.width - 1;
+    const ndcY = 1 - (2 * y) / canvas.height;
+
+    // Create inverse matrices to convert to world coordinates
+    const projectionMatrix = mat4.create();
+    mat4.perspective(projectionMatrix, Math.PI / 4, canvas.width / canvas.height, 0.1, 10.0);
+
+    const viewMatrix = mat4.create();
+    mat4.lookAt(viewMatrix, [1.5, 1.5, 2.5], [0.5, 0.5, 0], [0, 1, 0]);
+    mat4.rotateX(viewMatrix, viewMatrix, rotationX);
+    mat4.rotateY(viewMatrix, viewMatrix, rotationY);
+
+    const inverseVPMatrix = mat4.create();
+    mat4.multiply(inverseVPMatrix, projectionMatrix, viewMatrix);
+    mat4.invert(inverseVPMatrix, inverseVPMatrix);
+
+    // Create the ray's start and end points in NDC space
+    const nearPoint = vec4.fromValues(ndcX, ndcY, -1, 1);
+    const farPoint = vec4.fromValues(ndcX, ndcY, 1, 1);
+
+    // Transform these points to world coordinates
+    vec4.transformMat4(nearPoint, nearPoint, inverseVPMatrix);
+    vec4.transformMat4(farPoint, farPoint, inverseVPMatrix);
+
+    // Normalize homogeneous coordinates
+    for (let i = 0; i < 3; i++) {
+        nearPoint[i] /= nearPoint[3];
+        farPoint[i] /= farPoint[3];
     }
 
-    drawGrid();  // Re-render grid
+    // Ray direction (normalize it)
+    const rayDirection = vec3.create();
+    vec3.subtract(rayDirection, farPoint.slice(0, 3), nearPoint.slice(0, 3));
+    vec3.normalize(rayDirection, rayDirection);
+
+    // Intersect ray with grid cells
+    let hit = null;
+
+    for (let x = 0; x < gridWidth; x++) {
+        for (let y = 0; y < gridHeight; y++) {
+            const cellCenter = vec3.fromValues(x * 0.4, y * 0.4, 0);
+            const cellSize = 0.2;
+
+            if (rayIntersectsCube(nearPoint.slice(0, 3), rayDirection, cellCenter, cellSize)) {
+                hit = [x, y];
+                break;
+            }
+        }
+        if (hit) break;
+    }
+
+    if (hit) {
+        const [gridX, gridY] = hit;
+        const key = `${gridX},${gridY}`;
+
+        if (obstacles.has(key)) {
+            obstacles.delete(key);
+            pathfinding.clear_obstacle(gridX, gridY);
+            colorCube(gridX, gridY, [0.3, 0.3, 0.6]); // Default color
+        } else {
+            obstacles.add(key);
+            pathfinding.set_obstacle(gridX, gridY);
+            colorCube(gridX, gridY, [1.0, 0.0, 0.0]); // Red for obstacle
+        }
+
+        drawGrid();  // Redraw grid
+    }
 });
 
 resetButton.addEventListener("click", drawGrid);
