@@ -3,7 +3,7 @@ import init, { Pathfinding } from "./pkg/astar_wasm.js";
 let gl;
 let shaderProgram;
 let pathfinding;
-let gridWidth = 5;  // Changed to 5x5
+let gridWidth = 5;
 let gridHeight = 5;
 let obstacles = new Set();
 let path = [];
@@ -11,6 +11,10 @@ let isPathfinding = false;
 let animationIndex;
 let colorBuffer;
 let normalBuffer;
+
+let startPoint = [0, 0]; // Default start point
+let endPoint = [gridWidth - 1, gridHeight - 1]; // Default end point
+let selectionMode = "none"; // "none", "start", or "end"
 
 let rotationX = 0;
 let rotationY = 0;
@@ -21,6 +25,8 @@ let lastMouseY = 0;
 const canvas = document.getElementById("glCanvas");
 const startButton = document.getElementById("start-button");
 const resetButton = document.getElementById("reset-button");
+const selectStartButton = document.getElementById("select-start-button")
+const selectEndButton = document.getElementById("select-end-button")
 
 async function initWebGL() {
     console.log("Initializing WebGL...");
@@ -45,7 +51,7 @@ async function initWebGL() {
     colorBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
 
-    // Allocate an initial color array (adjust the size as necessary)
+    // Allocate an initial color array
     const initialColors = new Float32Array(gridWidth * gridHeight * 6 * 3).fill(0.0); // All black initially
     gl.bufferData(gl.ARRAY_BUFFER, initialColors, gl.DYNAMIC_DRAW);
 
@@ -193,18 +199,28 @@ function drawGrid() {
             let color = [0.3, 0.3, 0.6, 1.0];  // Default Blue
 
             const key = `${x},${y}`;
-            if (obstacles.has(key)) color = [1.0, 0.0, 0.0, 1.0];  // Red for obstacle
-            if (path.some(p => p[0] === x && p[1] === y)) color = [1.0, 1.0, 0.0, 1.0];  // Yellow for path
-
+            if (obstacles.has(key)) {
+                color = [1.0, 0.0, 0.0, 1.0];  // Red for obstacle
+            }
+            if (path.some(p => p[0] === x && p[1] === y)) {
+                color = [1.0, 1.0, 0.0, 1.0];  // Yellow for path
+            }
+            // Highlight start and end points with yellow
+            if ((x === startPoint[0] && y === startPoint[1]) ||
+                (x === endPoint[0] && y === endPoint[1])) {
+                color = [1.0, 1.0, 0.0, 1.0];  // Yellow for start/end
+            }
             drawCube(x * cellSize, y * cellSize, 0, cellSize, color);
         }
     }
 }
 
 function drawCube(x, y, z, cellSize, color) {
+    // Set color uniform
     const uColorLocation = gl.getUniformLocation(shaderProgram, "u_color");
     gl.uniform4fv(uColorLocation, new Float32Array(color));
 
+    // Create model matrix
     const modelMatrix = mat4.create();
     mat4.translate(modelMatrix, modelMatrix, [x, y, z]);
 
@@ -401,14 +417,44 @@ canvas.addEventListener("click", (event) => {
         const [gridX, gridY] = hit;
         const key = `${gridX},${gridY}`;
 
-        if (obstacles.has(key)) {
-            obstacles.delete(key);
-            pathfinding.clear_obstacle(gridX, gridY);
-            colorCube(gridX, gridY, [0.3, 0.3, 0.6]); // Default color
-        } else {
-            obstacles.add(key);
-            pathfinding.set_obstacle(gridX, gridY);
-            colorCube(gridX, gridY, [1.0, 0.0, 0.0]); // Red for obstacle
+        // Handle the click based on the current selection mode
+        if (selectionMode === "start") {
+            // First remove the cell from obstacles if it's there
+            if (obstacles.has(key)) {
+                obstacles.delete(key);
+                pathfinding.clear_obstacle(gridX, gridY);
+            }
+            // Set as start point
+            startPoint = [gridX, gridY];
+            selectionMode = "none"; // Reset selection mode
+            selectStartButton.style.backgroundColor = selectionMode === "start" ? "#FFD700" : "";
+        }
+        else if (selectionMode === "end") {
+            // First remove the cell from obstacles if it's there
+            if (obstacles.has(key)) {
+                obstacles.delete(key);
+                pathfinding.clear_obstacle(gridX, gridY);
+            }
+            // Set as end point
+            endPoint = [gridX, gridY];
+            selectionMode = "none"; // Reset selection mode
+            selectEndButton.style.backgroundColor = selectionMode === "end" ? "#FFD700" : "";
+        }
+        else {
+            // Don't allow setting obstacles on start or end points
+            if ((gridX === startPoint[0] && gridY === startPoint[1]) ||
+                (gridX === endPoint[0] && gridY === endPoint[1])) {
+                return;
+            }
+
+            // Toggle obstacle
+            if (obstacles.has(key)) {
+                obstacles.delete(key);
+                pathfinding.clear_obstacle(gridX, gridY);
+            } else {
+                obstacles.add(key);
+                pathfinding.set_obstacle(gridX, gridY);
+            }
         }
 
         drawGrid();  // Redraw grid
@@ -419,6 +465,13 @@ resetButton.addEventListener("click", () => {
     // Clear obstacles and path
     obstacles.clear();
     path = [];
+    // Reset start and end points to defaults
+    startPoint = [0, 0];
+    endPoint = [gridWidth - 1, gridHeight - 1];
+    // Reset selection mode
+    selectionMode = "none";
+    selectStartButton.style.backgroundColor = selectionMode === "start" ? "#FFD700" : "";
+    selectEndButton.style.backgroundColor = selectionMode === "end" ? "#FFD700" : "";
     // Reset the pathfinding module
     pathfinding = new Pathfinding(gridWidth, gridHeight);
     drawGrid();
@@ -428,13 +481,14 @@ startButton.addEventListener("click", () => {
     console.log("Obstacle Positions:", Array.from(obstacles));
     if (isPathfinding) return;
 
-    const start = [0, 0];  // Starting point
-    const end = [gridWidth - 1, gridHeight - 1];  // Goal point
-
     // Get obstacles in the format the WASM module expects
     const obstacleArray = Array.from(obstacles).map(key => key.split(",").map(Number));
 
-    path = pathfinding.find_path(start[0], start[1], end[0], end[1], obstacleArray);
+    path = pathfinding.find_path(
+        startPoint[0], startPoint[1],
+        endPoint[0], endPoint[1],
+        obstacleArray
+    );
 
     if (path.length === 0) {
         alert("No path found!");
@@ -444,6 +498,16 @@ startButton.addEventListener("click", () => {
     isPathfinding = true;
     animationIndex = 0;
     animatePath();
+});
+
+selectStartButton.addEventListener("click", () => {
+    selectionMode = "start";
+    selectStartButton.style.backgroundColor = selectionMode === "start" ? "#FFD700" : "";
+});
+
+selectEndButton.addEventListener("click", () => {
+    selectionMode = "end";
+    selectEndButton.style.backgroundColor = selectionMode === "end" ? "#FFD700" : "";
 });
 
 window.onload = initWebGL;
