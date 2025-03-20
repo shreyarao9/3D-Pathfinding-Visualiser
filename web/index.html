@@ -10,23 +10,40 @@
         crossorigin="anonymous" defer>
     </script>
     <script id="vertex-shader" type="x-shader/x-vertex">
-        attribute vec3 aPosition;
-        uniform mat4 uModelMatrix;
-        uniform mat4 uViewMatrix;
-        uniform mat4 uProjectionMatrix;
+    attribute vec3 a_position;  // Vertex position
+    attribute vec3 a_normal;    // Normal vector
 
-        void main() {
-            gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * vec4(aPosition, 1.0);
-        }
+    uniform mat4 u_modelViewMatrix;
+    uniform mat4 u_projectionMatrix;
+    uniform mat4 u_normalMatrix;  // Transforms normals correctly
+
+    varying vec3 v_normal;  // Pass normal to fragment shader
+
+    void main() {
+        gl_Position = u_projectionMatrix * u_modelViewMatrix * vec4(a_position, 1.0);
+
+        // Transform normal to world space
+        v_normal = normalize(vec3(u_normalMatrix * vec4(a_normal, 0.0)));
+    }
     </script>
 
     <script id="fragment-shader" type="x-shader/x-fragment">
-        precision mediump float;
-        uniform vec3 uColor;
+    precision mediump float;
 
-        void main() {
-            gl_FragColor = vec4(uColor, 1.0);
-        }
+    varying vec3 v_normal;  // Normal from vertex shader
+
+    uniform vec3 u_lightDirection;  // Directional light (should be normalized)
+    uniform vec4 u_color;           // Base color of the object
+
+    void main() {
+        // Compute diffuse lighting (dot product of normal and light direction)
+        float lightIntensity = max(dot(normalize(v_normal), normalize(u_lightDirection)), 0.0);
+
+        // Apply shading to the base color
+        vec4 shadedColor = u_color * lightIntensity;
+
+        gl_FragColor = shadedColor;
+    }
     </script>
 </head>
 <body>

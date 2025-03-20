@@ -269,29 +269,34 @@ canvas.addEventListener("click", (event) => {
     const x = (event.clientX - rect.left) * (canvas.width / rect.width);
     const y = (event.clientY - rect.top) * (canvas.height / rect.height);
 
-
     // Convert to normalized device coordinates (NDC)
     const ndcX = (2 * x) / canvas.width - 1;
     const ndcY = 1 - (2 * y) / canvas.height;
 
-    // Create inverse matrices to convert to world coordinates
+    // Camera setup
+    const cameraDistance = 2.5; // Distance from the grid
+    const cameraPosition = vec3.fromValues(1.5, 1.5, cameraDistance);
+    const target = vec3.fromValues(0.5, 0.5, 0);
+    const up = vec3.fromValues(0, 1, 0);
+
+    // Projection and view matrices
     const projectionMatrix = mat4.create();
     mat4.perspective(projectionMatrix, Math.PI / 4, canvas.width / canvas.height, 0.1, 10.0);
 
     const viewMatrix = mat4.create();
-    mat4.lookAt(viewMatrix, [1.5, 1.5, 2.5], [0.5, 0.5, 0], [0, 1, 0]);
+    mat4.lookAt(viewMatrix, cameraPosition, target, up);
     mat4.rotateX(viewMatrix, viewMatrix, rotationX);
     mat4.rotateY(viewMatrix, viewMatrix, rotationY);
 
+    // Inverse View-Projection matrix for transforming NDC to world coordinates
     const inverseVPMatrix = mat4.create();
     mat4.multiply(inverseVPMatrix, projectionMatrix, viewMatrix);
     mat4.invert(inverseVPMatrix, inverseVPMatrix);
 
-    // Create the ray's start and end points in NDC space
+    // Convert NDC coordinates into world space
     const nearPoint = vec4.fromValues(ndcX, ndcY, -1, 1);
     const farPoint = vec4.fromValues(ndcX, ndcY, 1, 1);
 
-    // Transform these points to world coordinates
     vec4.transformMat4(nearPoint, nearPoint, inverseVPMatrix);
     vec4.transformMat4(farPoint, farPoint, inverseVPMatrix);
 
@@ -301,20 +306,23 @@ canvas.addEventListener("click", (event) => {
         farPoint[i] /= farPoint[3];
     }
 
-    // Ray direction (normalize it)
+    // Compute ray origin and direction
+    const rayOrigin = vec3.fromValues(nearPoint[0], nearPoint[1], nearPoint[2]);
     const rayDirection = vec3.create();
-    vec3.subtract(rayDirection, farPoint.slice(0, 3), nearPoint.slice(0, 3));
+    vec3.subtract(rayDirection, farPoint.slice(0, 3), rayOrigin);
     vec3.normalize(rayDirection, rayDirection);
+
+    console.log("Ray Origin:", rayOrigin);
+    console.log("Ray Direction:", rayDirection);
 
     // Intersect ray with grid cells
     let hit = null;
-
     for (let x = 0; x < gridWidth; x++) {
         for (let y = 0; y < gridHeight; y++) {
             const cellCenter = vec3.fromValues(x * 0.4, y * 0.4, 0);
             const cellSize = 0.2;
 
-            if (rayIntersectsCube(nearPoint.slice(0, 3), rayDirection, cellCenter, cellSize)) {
+            if (rayIntersectsCube(rayOrigin, rayDirection, cellCenter, cellSize)) {
                 hit = [x, y];
                 break;
             }
