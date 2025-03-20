@@ -10,6 +10,7 @@ let path = [];
 let isPathfinding = false;
 let animationIndex;
 let colorBuffer;
+let normalBuffer;
 
 let rotationX = 0;
 let rotationY = 0;
@@ -89,42 +90,78 @@ function loadShader(gl, type, source) {
 function initBuffers() {
     const vertices = [
         // Front face
-        -0.1, -0.1,  0.1,  0.1, -0.1,  0.1,  0.1,  0.1,  0.1,
-        -0.1, -0.1,  0.1,  0.1,  0.1,  0.1, -0.1,  0.1,  0.1,
+        -0.2, -0.2,  0.2,  0.2, -0.2,  0.2,  0.2,  0.2,  0.2,
+        -0.2, -0.2,  0.2,  0.2,  0.2,  0.2, -0.2,  0.2,  0.2,
 
         // Back face
-        -0.1, -0.1, -0.1, -0.1,  0.1, -0.1,  0.1,  0.1, -0.1,
-        -0.1, -0.1, -0.1,  0.1,  0.1, -0.1,  0.1, -0.1, -0.1,
+        -0.2, -0.2, -0.2, -0.2,  0.2, -0.2,  0.2,  0.2, -0.2,
+        -0.2, -0.2, -0.2,  0.2,  0.2, -0.2,  0.2, -0.2, -0.2,
 
         // Top face
-        -0.1,  0.1, -0.1, -0.1,  0.1,  0.1,  0.1,  0.1,  0.1,
-        -0.1,  0.1, -0.1,  0.1,  0.1,  0.1,  0.1,  0.1, -0.1,
+        -0.2,  0.2, -0.2, -0.2,  0.2,  0.2,  0.2,  0.2,  0.2,
+        -0.2,  0.2, -0.2,  0.2,  0.2,  0.2,  0.2,  0.2, -0.2,
 
         // Bottom face
-        -0.1, -0.1, -0.1,  0.1, -0.1, -0.1,  0.1, -0.1,  0.1,
-        -0.1, -0.1, -0.1,  0.1, -0.1,  0.1, -0.1, -0.1,  0.1,
+        -0.2, -0.2, -0.2,  0.2, -0.2, -0.2,  0.2, -0.2,  0.2,
+        -0.2, -0.2, -0.2,  0.2, -0.2,  0.2, -0.2, -0.2,  0.2,
 
         // Right face
-        0.1, -0.1, -0.1,  0.1,  0.1, -0.1,  0.1,  0.1,  0.1,
-        0.1, -0.1, -0.1,  0.1,  0.1,  0.1,  0.1, -0.1,  0.1,
+        0.2, -0.2, -0.2,  0.2,  0.2, -0.2,  0.2,  0.2,  0.2,
+        0.2, -0.2, -0.2,  0.2,  0.2,  0.2,  0.2, -0.2,  0.2,
 
         // Left face
-        -0.1, -0.1, -0.1, -0.1, -0.1,  0.1, -0.1,  0.1,  0.1,
-        -0.1, -0.1, -0.1, -0.1,  0.1,  0.1, -0.1,  0.1, -0.1
+        -0.2, -0.2, -0.2, -0.2, -0.2,  0.2, -0.2,  0.2,  0.2,
+        -0.2, -0.2, -0.2, -0.2,  0.2,  0.2, -0.2,  0.2, -0.2
+    ];
+
+    // Define normal vectors for each vertex
+    const normals = [
+        // Front face - normal pointing towards +Z
+        0, 0, 1,  0, 0, 1,  0, 0, 1,
+        0, 0, 1,  0, 0, 1,  0, 0, 1,
+
+        // Back face - normal pointing towards -Z
+        0, 0, -1,  0, 0, -1,  0, 0, -1,
+        0, 0, -1,  0, 0, -1,  0, 0, -1,
+
+        // Top face - normal pointing towards +Y
+        0, 1, 0,  0, 1, 0,  0, 1, 0,
+        0, 1, 0,  0, 1, 0,  0, 1, 0,
+
+        // Bottom face - normal pointing towards -Y
+        0, -1, 0,  0, -1, 0,  0, -1, 0,
+        0, -1, 0,  0, -1, 0,  0, -1, 0,
+
+        // Right face - normal pointing towards +X
+        1, 0, 0,  1, 0, 0,  1, 0, 0,
+        1, 0, 0,  1, 0, 0,  1, 0, 0,
+
+        // Left face - normal pointing towards -X
+        -1, 0, 0,  -1, 0, 0,  -1, 0, 0,
+        -1, 0, 0,  -1, 0, 0,  -1, 0, 0
     ];
 
     const vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-    const aPosition = gl.getAttribLocation(shaderProgram, "aPosition");
+    const aPosition = gl.getAttribLocation(shaderProgram, "a_position");
     gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(aPosition);
+
+    // Normal buffer
+    normalBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+
+    const aNormal = gl.getAttribLocation(shaderProgram, "a_normal");
+    gl.vertexAttribPointer(aNormal, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(aNormal);
 }
 
 function drawGrid() {
     console.log("Drawing grid...");
-    const cellSize = 0.4;
+    const cellSize = 0.5;
 
     // Create projection matrix
     const projectionMatrix = mat4.create();
@@ -138,19 +175,26 @@ function drawGrid() {
     mat4.rotateX(viewMatrix, viewMatrix, rotationX);
     mat4.rotateY(viewMatrix, viewMatrix, rotationY);
 
-    gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram, "uProjectionMatrix"), false, projectionMatrix);
-    gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram, "uViewMatrix"), false, viewMatrix);
+    // Set light direction uniforms
+    const lightDirection = vec3.fromValues(1.0, 1.0, 1.0); // Light coming from top-right-front
+    vec3.normalize(lightDirection, lightDirection);
+    const uLightDirection = gl.getUniformLocation(shaderProgram, "u_lightDirection");
+    gl.uniform3fv(uLightDirection, lightDirection);
+
+    // Set projection matrix uniform
+    const uProjectionMatrix = gl.getUniformLocation(shaderProgram, "u_projectionMatrix");
+    gl.uniformMatrix4fv(uProjectionMatrix, false, projectionMatrix);
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     // Render each cube in the grid
     for (let x = 0; x < gridWidth; x++) {
         for (let y = 0; y < gridHeight; y++) {
-            let color = [0.3, 0.3, 0.6];  // Default Blue
+            let color = [0.3, 0.3, 0.6, 1.0];  // Default Blue
 
             const key = `${x},${y}`;
-            if (obstacles.has(key)) color = [1.0, 0.0, 0.0];  // Red for obstacle
-            if (path.some(p => p[0] === x && p[1] === y)) color = [1.0, 1.0, 0.0];  // Yellow for path
+            if (obstacles.has(key)) color = [1.0, 0.0, 0.0, 1.0];  // Red for obstacle
+            if (path.some(p => p[0] === x && p[1] === y)) color = [1.0, 1.0, 0.0, 1.0];  // Yellow for path
 
             drawCube(x * cellSize, y * cellSize, 0, cellSize, color);
         }
@@ -158,15 +202,41 @@ function drawGrid() {
 }
 
 function drawCube(x, y, z, cellSize, color) {
-    const uColorLocation = gl.getUniformLocation(shaderProgram, "uColor");
-    gl.uniform3fv(uColorLocation, new Float32Array(color));
+    const uColorLocation = gl.getUniformLocation(shaderProgram, "u_color");
+    gl.uniform4fv(uColorLocation, new Float32Array(color));
 
     const modelMatrix = mat4.create();
     mat4.translate(modelMatrix, modelMatrix, [x, y, z]);
 
-    const uModelMatrix = gl.getUniformLocation(shaderProgram, "uModelMatrix");
-    gl.uniformMatrix4fv(uModelMatrix, false, modelMatrix);
+    // Create model-view matrix
+    const modelViewMatrix = mat4.create();
 
+    // Create view matrix
+    const viewMatrix = mat4.create();
+    mat4.lookAt(viewMatrix, [1.5, 1.5, 2.5], [0.5, 0.5, 0], [0, 1, 0]);
+
+    // Apply rotations
+    mat4.rotateX(viewMatrix, viewMatrix, rotationX);
+    mat4.rotateY(viewMatrix, viewMatrix, rotationY);
+
+    // Combine view and model matrices
+    mat4.multiply(modelViewMatrix, viewMatrix, modelMatrix);
+
+    // Pass model-view matrix to shader
+    const uModelViewMatrix = gl.getUniformLocation(shaderProgram, "u_modelViewMatrix");
+    gl.uniformMatrix4fv(uModelViewMatrix, false, modelViewMatrix);
+
+    // Calculate normal matrix (inverse transpose of model-view matrix)
+    // This is needed to transform normals correctly
+    const normalMatrix = mat4.create();
+    mat4.invert(normalMatrix, modelViewMatrix);
+    mat4.transpose(normalMatrix, normalMatrix);
+
+    // Pass normal matrix to shader
+    const uNormalMatrix = gl.getUniformLocation(shaderProgram, "u_normalMatrix");
+    gl.uniformMatrix4fv(uNormalMatrix, false, normalMatrix);
+
+    // Draw the cube
     gl.drawArrays(gl.TRIANGLES, 0, 36);
 }
 
@@ -312,15 +382,12 @@ canvas.addEventListener("click", (event) => {
     vec3.subtract(rayDirection, farPoint.slice(0, 3), rayOrigin);
     vec3.normalize(rayDirection, rayDirection);
 
-    console.log("Ray Origin:", rayOrigin);
-    console.log("Ray Direction:", rayDirection);
-
     // Intersect ray with grid cells
     let hit = null;
     for (let x = 0; x < gridWidth; x++) {
         for (let y = 0; y < gridHeight; y++) {
             const cellCenter = vec3.fromValues(x * 0.4, y * 0.4, 0);
-            const cellSize = 0.2;
+            const cellSize = 0.3;
 
             if (rayIntersectsCube(rayOrigin, rayDirection, cellCenter, cellSize)) {
                 hit = [x, y];
@@ -348,7 +415,14 @@ canvas.addEventListener("click", (event) => {
     }
 });
 
-resetButton.addEventListener("click", drawGrid);
+resetButton.addEventListener("click", () => {
+    // Clear obstacles and path
+    obstacles.clear();
+    path = [];
+    // Reset the pathfinding module
+    pathfinding = new Pathfinding(gridWidth, gridHeight);
+    drawGrid();
+});
 
 startButton.addEventListener("click", () => {
     console.log("Obstacle Positions:", Array.from(obstacles));
