@@ -1,4 +1,7 @@
-import init, { Pathfinding } from "../pkg/astar_wasm.js";
+// Comment this line if you're running this locally
+import init, { Pathfinding } from "./pkg/astar_wasm.js";
+// Uncomment this one
+// import init, { Pathfinding } from "../pkg/astar_wasm.js";
 
 let gl;
 let shaderProgram;
