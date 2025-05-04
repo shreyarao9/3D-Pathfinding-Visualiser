@@ -1,4 +1,4 @@
-import init, { Pathfinding } from "./pkg/astar_wasm.js";
+import init, { Pathfinding } from "../pkg/astar_wasm.js";
 
 let gl;
 let shaderProgram;
@@ -166,7 +166,6 @@ function initBuffers() {
 }
 
 function drawGrid() {
-    console.log("Drawing grid...");
     const cellSize = 0.5;
 
     // Create projection matrix

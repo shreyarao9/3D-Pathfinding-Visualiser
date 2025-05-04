@@ -1,5 +1,4 @@
 use wasm_bindgen::prelude::*;
-use web_sys::console;
 use std::collections::{BinaryHeap, HashMap};
 use serde_wasm_bindgen::to_value;
 
@@ -53,7 +52,6 @@ fn astar(start: (usize, usize), goal: (usize, usize), grid: &Vec<Vec<u8>>) -> Ve
     open_set.push((std::cmp::Reverse(heuristic(start, goal)), start));
 
     while let Some((_, current)) = open_set.pop() {
-        web_sys::console::log_1(&format!("Visiting: {:?}", current).into());
         if current == goal {
             return reconstruct_path(came_from, current);
         }
@@ -103,7 +101,7 @@ fn neighbors(pos: (usize, usize), grid: &Vec<Vec<u8>>) -> Vec<((usize, usize), u
     results
 }
 
-fn reconstruct_path(mut came_from: HashMap<(usize, usize), (usize, usize)>, mut current: (usize, usize)) -> Vec<(usize, usize)> {
+fn reconstruct_path(came_from: HashMap<(usize, usize), (usize, usize)>, mut current: (usize, usize)) -> Vec<(usize, usize)> {
     let mut path = vec![current];
     while let Some(&prev) = came_from.get(&current) {
         current = prev;
