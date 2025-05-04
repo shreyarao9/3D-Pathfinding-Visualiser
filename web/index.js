@@ -509,4 +509,95 @@ selectEndButton.addEventListener("click", () => {
     selectEndButton.style.backgroundColor = selectionMode === "end" ? "#FFD700" : "";
 });
 
-window.onload = initWebGL;
+window.onload = async function () {
+	await initWebGL();
+	
+	Toastify({
+		text: "This is a 3D visualiser for an algorithm used for finding the shortest path \nbetween two points while avoiding obstacles.",
+		duration: 15000,
+		close: true,
+		gravity: "bottom", // `top` or `bottom`
+		position: "right", // `left`, `center` or `right`
+		stopOnFocus: true, // Prevents dismissing of toast on hover
+		style: {
+			background: "linear-gradient(to right, #003a5c, #007acc)",
+			color: "#ffffff",
+			boxShadow: "0 0 10px rgba(0, 122, 204, 0.4)"
+		}
+    }).showToast();
+    
+    setTimeout(() => {
+		Toastify({
+			text: "Feel free to change the orientation of the grid at any time (Left click \ninside the box enclosing the grid, and drag the mouse to desired angle).",
+			duration: -1,
+			close: true,
+			gravity: "bottom",
+			position: "right",
+			stopOnFocus: true,
+			style: {
+				background: "linear-gradient(to right, #003a5c, #007acc)",
+				color: "#ffffff",
+				boxShadow: "0 0 10px rgba(0, 122, 204, 0.4)"
+			}
+		}).showToast();
+	}, 10000);
+	
+	// Delayed tour
+	setTimeout(() => {
+	let toast1 = Toastify({
+		text: "Click on any cube in the grid to set/unset it as an obstacle \n(coloured red). (Click this message to continue)",
+		duration: -1,
+		close: true,
+		position: "left",
+		gravity: "top",
+		offset: {
+			x: '1em', // horizontal axis - can be a number or a string indicating unity. eg: '2em'
+			y: '3em' // vertical axis - can be a number or a string indicating unity. eg: '2em'
+		},
+		style: {
+			background: "linear-gradient(to right, #003a5c, #007acc)",
+			color: "#ffffff",
+			boxShadow: "0 0 10px rgba(0, 122, 204, 0.4)"
+		},
+		onClick: function(){
+			toast1.hideToast();
+			let toast2 = Toastify({
+				text: "Click on Select Start (or End) button to set the Start (or End) \ncube on the grid. Sets the start and end points between \nwhich the shortest path is calculated.",
+				duration: -1,
+				close: true,
+				position: "left",
+				gravity: "top",
+				offset: {
+					x: '1em',
+					y: '3em'
+				},
+				style: {
+					background: "linear-gradient(to right, #003a5c, #007acc)",
+					color: "#ffffff",
+					boxShadow: "0 0 10px rgba(0, 122, 204, 0.4)"
+				},
+				onClick: function(){
+					toast2.hideToast();
+					Toastify({
+						text: "Click on Start Pathfinding to run the algorithm and visualise the output.",
+						duration: 7000,
+						close: true,
+						position: "left",
+						gravity: "top",
+						offset: {
+							x: '1em',
+							y: '3em'
+						},
+						stopOnFocus: true,
+						style: {
+							background: "linear-gradient(to right, #003a5c, #007acc)",
+							color: "#ffffff",
+							boxShadow: "0 0 10px rgba(0, 122, 204, 0.4)"
+						}
+					}).showToast();
+				}
+			}).showToast();
+		}
+    }).showToast();
+	}, 15000);
+}
